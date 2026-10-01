@@ -1,6 +1,6 @@
 """Shared data structures used across all checks and the report renderer."""
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -49,3 +49,6 @@ class AuditResult:
     score_excludes: list[str]  # check_ids excluded from overall score (e.g. mocked)
     checks: list[CheckResult]
     generated_at: str
+    # Live AI spot check (opt-in). Deliberately NOT a CheckResult: LLM
+    # answers are non-deterministic, so they never feed overall_score.
+    spot_check: Optional[Any] = None

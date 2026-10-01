@@ -17,11 +17,13 @@ def main() -> None:
     parser.add_argument("--name", dest="business_name", default=None, help="Business name (guessed from the site if omitted)")
     parser.add_argument("--category", default=None, help="Business category, shown in the report header only")
     parser.add_argument("--location", default=None, help="Business location, shown in the report header only")
+    parser.add_argument("--live-check", action="store_true",
+                        help="Also ask free LLM APIs whether they mention the business (separate panel, not scored)")
     parser.add_argument("-o", "--output", default=None, help="Output HTML file path (default: reports/<business>.html)")
     args = parser.parse_args()
 
     print(f"Auditing {args.url} ...", file=sys.stderr)
-    result = run_audit(args.url, args.business_name, args.category, args.location)
+    result = run_audit(args.url, args.business_name, args.category, args.location, live_check=args.live_check)
 
     slug = "".join(c if c.isalnum() else "_" for c in result.business_name.lower()).strip("_")
     out_path = Path(args.output) if args.output else Path("reports") / f"{slug}.html"
@@ -31,6 +33,12 @@ def main() -> None:
     print(f"Overall score: {result.overall_score}/100", file=sys.stderr)
     for check in result.checks:
         print(f"  {check.name}: {check.score}/{check.max_score}", file=sys.stderr)
+    if result.spot_check:
+        sc = result.spot_check
+        if sc.error:
+            print(f"  Live AI spot check: {sc.error}", file=sys.stderr)
+        for sp in sc.prompts:
+            print(f"  Live AI spot check ({sp.kind}): mentioned by {sp.mention_count}/{len(sp.answers)} models", file=sys.stderr)
     print(f"Report written to {out_path.resolve()}", file=sys.stderr)
 
 

@@ -77,6 +77,7 @@ def run_audit(
     business_name: str | None = None,
     category: str | None = None,
     location: str | None = None,
+    live_check: bool = False,
 ) -> AuditResult:
     url = normalize_url(url)
 
@@ -93,6 +94,11 @@ def run_audit(
     scored_checks = [c for c in checks if c.check_id not in score_excludes]
     overall_score = round(sum(c.score for c in scored_checks) / len(scored_checks), 1) if scored_checks else 0.0
 
+    spot = None
+    if live_check:
+        from .checks import live_spot_check
+        spot = live_spot_check.run(url, business_name, category, location)
+
     return AuditResult(
         url=url,
         business_name=business_name,
@@ -102,4 +108,5 @@ def run_audit(
         score_excludes=score_excludes,
         checks=checks,
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        spot_check=spot,
     )

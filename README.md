@@ -20,9 +20,11 @@ python app.py
 python -m geo_auditor.cli acmebakery.com --category "Bakery" --location "Austin, TX"
 ```
 
-Requires Python 3.10+. No API keys, no database, no accounts — every check
+Requires Python 3.10+. No API keys, no database, no accounts — every core check
 either parses a page the tool fetched itself or runs Python's own
-`robots.txt` parser against it.
+`robots.txt` parser against it. The optional live AI spot check
+(`--live-check`, or the checkbox in the web form) uses free LLM APIs and
+also works without keys; see below.
 
 Three real audit reports (Levain Bakery, Morgan & Morgan, Aspen Dental) are
 already generated in [`reports/`](reports/) — open any of them directly in a
@@ -124,6 +126,44 @@ the entire premise of an evidence-based tool.*
   weren't comfortable shipping in a take-home; flagged as a "build next"
   item instead of building a fragile or borderline version of it.
 
+## Optional: live AI spot check (free LLM APIs)
+
+`--live-check` asks real LLMs about the business and records whether they
+mention it. This is a first version of "build next" item #1 below. Each
+prompt goes to up to 3 different models. The raw answers and the matched
+text are shown in a separate panel, and **the panel is never part of the
+score**, because LLM answers change from run to run.
+
+```bash
+python -m geo_auditor.cli levainbakery.com --category "Bakery" --location "New York, NY" --live-check
+```
+
+The models come from [awesome-free-llm-apis](https://github.com/mnfst/awesome-free-llm-apis).
+All 16 providers on that list are in `geo_auditor/llm/providers.py`, and each
+is called through its OpenAI-compatible endpoint, so no vendor SDKs are
+needed. `geo_auditor/llm/pool.py` pools them so the free tiers stack:
+
+- requests are spread round-robin across every active provider;
+- when a provider hits a rate limit (429), runs out of credits, rejects a key
+  or times out, it gets a cooldown (using `Retry-After` when the provider
+  sends one) and the request moves on to the next provider.
+
+**LLM7.io, OVHcloud and Kilo Code need no key**, so the check works right
+away. Every other provider (Groq, Gemini, Mistral, OpenRouter, NVIDIA,
+Cloudflare, Ollama Cloud, Cohere, Z AI, Hugging Face, ModelScope,
+SiliconFlow, Aion Labs) joins the pool once its free key is in `.env`:
+
+```bash
+cp .env.example .env          # paste in any free keys you have
+python -m geo_auditor.llm             # shows which providers are active
+python -m geo_auditor.llm --probe     # sends one tiny request to each
+python -m geo_auditor.llm "any prompt"   # answers through the pool
+```
+
+Caveat: these are API models answering from training data without web
+search. They stand in for ChatGPT and Perplexity answers but are not the
+same thing, and the report says so.
+
 ## The score
 
 Each check scores 0–100 independently, with the exact point deductions
@@ -142,7 +182,8 @@ high-effort one — "what to do Monday morning."
 
 ## What's real vs. mocked
 
-**Nothing in this tool is mocked.** Every finding comes from a live HTTP
+**Nothing in this tool is mocked.** (The optional live spot check uses
+real LLM responses too, and it is kept out of the score.) Every finding comes from a live HTTP
 fetch of the actual site (`fetch.py`) at run time — real `robots.txt`,
 real HTML, real JSON-LD, parsed with BeautifulSoup/lxml and Python's own
 robots-parser. The `CheckResult.mocked` field and the score-exclusion logic
@@ -202,10 +243,15 @@ geo_auditor/
   report.py          # renders an AuditResult to HTML via Jinja2
   webapp.py          # Flask app (form -> report)
   cli.py              # CLI (URL in -> HTML file out)
+  llm/
+    providers.py      # all 16 free LLM APIs from awesome-free-llm-apis
+    pool.py           # round-robin + failover pool so free quotas stack
+    __main__.py       # `python -m geo_auditor.llm` status / probe / prompt
   checks/
     crawler_access.py     # Check 1
     structured_data.py    # Check 2
     content_quality.py    # Check 3
+    live_spot_check.py    # optional, unscored: ask free LLMs about the business
   templates/
     index.html       # web form
     report.html       # the report itself

@@ -106,6 +106,11 @@
   details.check-detail .why { color: var(--ink-soft); font-size: 13.5px; margin: 8px 0 14px; }
   details.check-detail .findings-inner { margin-top: 10px; }
 
+  .spot-answer { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; }
+  .spot-answer .who { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .spot-answer details summary { cursor: pointer; font-size: 12.5px; color: var(--accent); }
+  .spot-answer pre { background: #1a1d23; color: #e3e6ea; padding: 10px 12px; border-radius: 8px; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+
   footer { color: var(--ink-soft); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 40px; }
 </style>
 </head>
@@ -245,6 +250,31 @@
     </details>
     {% endfor %}
   </section>
+
+  {% if audit.spot_check %}
+  {% set sc = audit.spot_check %}
+  <section>
+    <h2>Live AI spot check <span class="badge info">not scored</span></h2>
+    <div class="sub">Real answers from {{ sc.providers_available }} pooled free LLM APIs at {{ sc.ran_at }}. Answers vary run to run and these models answer from training data without web search, so treat this as a dated snapshot that corroborates the checks above, not a measurement. It is excluded from the score.</div>
+    {% if sc.error %}<div class="finding">{{ sc.error }}</div>{% endif %}
+    {% for sp in sc.prompts %}
+    <div class="finding">
+      <div class="fhead">
+        <div class="ftitle">“{{ sp.prompt }}”</div>
+        <span class="badge {{ 'good' if sp.mention_count else 'warning' }}">{{ sp.mention_count }}/{{ sp.answers | length }} {{ 'gave your website' if sp.kind == 'entity' else 'mentioned you' }}</span>
+      </div>
+      {% for a in sp.answers %}
+      <div class="spot-answer">
+        <div class="who"><span class="badge {{ 'good' if a.mentioned else 'critical' }}">{{ 'yes' if a.mentioned else 'no' }}</span> {{ a.provider_name }} · <code>{{ a.model }}</code>{% if a.matched %} · matched: {{ a.matched | join(', ') }}{% endif %}</div>
+        {% if a.excerpt %}<pre>{{ a.excerpt }}</pre>{% endif %}
+        <details><summary>Full answer</summary><pre>{{ a.text }}</pre></details>
+      </div>
+      {% endfor %}
+      {% if not sp.answers %}<div class="spot-answer">No provider answered this prompt.</div>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
 
   <footer>
     Methodology: three checks, each scored 0–100 independently with the reasoning documented in "why this check exists" above; the overall score is their plain average.

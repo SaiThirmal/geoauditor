@@ -40,8 +40,13 @@
       <label for="business_name">Business name <span style="font-weight:400;color:#565d6b;">(optional — guessed from the site if left blank)</span></label>
       <input id="business_name" name="business_name" type="text" placeholder="Acme Bakery" value="{{ prev_name or '' }}">
 
-      <label for="location">Location <span style="font-weight:400;color:#565d6b;">(optional, for the report header only)</span></label>
+      <label for="category">Category <span style="font-weight:400;color:#565d6b;">(optional, used by the live AI check)</span></label>
+      <input id="category" name="category" type="text" placeholder="Bakery" value="{{ prev_category or '' }}">
+
+      <label for="location">Location <span style="font-weight:400;color:#565d6b;">(optional)</span></label>
       <input id="location" name="location" type="text" placeholder="Austin, TX" value="{{ prev_location or '' }}">
+
+      <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" name="live_check" style="width:auto;"> Also ask free AI models whether they mention this business (adds ~30s, not scored)</label>
 
       <button type="submit">Run audit</button>
       <div class="hint" id="loading" style="display:none;">Fetching pages and running checks — this takes a few seconds per site.</div>
